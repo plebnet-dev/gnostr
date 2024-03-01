@@ -1,146 +1,99 @@
-/// https://docs.rs/inline-c/latest/inline_c/#
-///
-/// Hello, Gnostr!
-///
-/// # Example
-///
-/// ```rust
-/// # use inline_c::assert_c;
-/// #
-/// # fn main() {
-/// #     (assert_c! {
-/// #include <stdio.h>
-///
-/// int main() {
-///     printf("Hello, Gnostr!");
-///
-///     return 0;
-/// }
-/// #    })
-/// #    .success()
-/// #    .stdout("Hello, Gnostr!");
-/// # }
-/// ```
+extern crate getopts;
+use getopts::Options;
 
-//use nostr_types::Event;
 use std::env;
-//use std::io::Read;
 use std::process;
 
-use inline_c::assert_c;
-//use gnostr_bins;
+extern crate gnostr_bins;
 
-use std::process::{Command, Stdio};
+use reqwest::Url;
+use std::io::Read;
+use gnostr_bins::{get_relays};
 
-fn gen_keys(){
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use k256::schnorr::SigningKey;
-use rand_core::OsRng;
+extern crate libc;
 
-    let signing_key = SigningKey::random(&mut OsRng);
-    let verifying_key = signing_key.verifying_key();
-    println!("PUBLIC: {:x}", verifying_key.to_bytes());
-    println!("PRIVATE: {:x}", signing_key.to_bytes());
-
+extern {
+    fn double_input(input: libc::c_int) -> libc::c_int;
 }
 
-//COMMAND:
-//CONTEXT
-//gnostr --sec e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | gnostr-post-event --relay wss://relay.damus.io
-#[allow(dead_code)]
-fn command_example() {
-    let gnostr_sec = Command::new("gnostr")
-        .arg("--sec")
-        .arg("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
-        .arg("-t")
-        .arg("gnostr")
-        .stdout(Stdio::piped())
-        .output()
-        .expect("url failed");
-    let mut gnostr_event = String::from_utf8(gnostr_sec.stdout).unwrap();
-    gnostr_event.pop();
-    println!("{:?}", gnostr_event);
-
-    let gnostr_post_event = Command::new("gnostr-post-event")
-        .arg("--relay")
-        .arg("wss://relay.damus.io")
-        .arg(gnostr_event)
-        .stdout(Stdio::piped())
-        .output()
-        .expect("picture failed");
-    let post = String::from_utf8(gnostr_post_event.stdout).unwrap();
-    println!("{}", post);
+extern {
+    ///static void gnostr_sha256(int argc, const char* argv[], struct args *args)
+    fn gnostr_sha256(input: libc::c_int) -> libc::c_int;
+}
+extern {
+    ///static int copyx(unsigned char *output, const unsigned char *x32, const unsigned char *y32, void *data)
+    fn copyx(input: libc::c_int) -> libc::c_int;
+}
+extern {
+    ///static void try_subcommand(int argc, const char* argv[])
+    fn try_subcommand(input: libc::c_int) -> libc::c_int;
+}
+extern {
+    ///static void print_hex(unsigned char* data, size_t size)
+    fn print_hex(input: libc::c_int) -> libc::c_int;
 }
 
+///gnostr-bins::get_relays()
+pub fn relays(_program: &str, _opts: &Options) {
+    let relays = get_relays();
+    println!("{}", format!("{  }", relays.unwrap()));
+}
+
+pub fn print_usage(program: &str, opts: &Options) {
+    let brief = format!("Usage: {} FILE [options]", program);
+    print!("{}", opts.usage(&brief));
+    //process::exit(0);
+}
+
+pub fn print_input(inp: &str, out: Option<String>) {
+    println!("{}", inp);
+    match out {
+        Some(x) => println!("{}", x),
+        None => println!("No Output"),
+    }
+}
 
 fn main() {
 
-    let args_vector: Vec<String> = env::args().collect();
-    //println!("args_vector = {:?}", args_vector);
-    //println!("args_vector.len() = {:?}", args_vector.len());
+    let args: Vec<String> = env::args().collect();
+    let program = args[0].clone();
+    //REF: https://docs.rs/getopts/latest/getopts/struct.Options.html
+    let mut opts = Options::new();
 
-    if args_vector.len() == 1 {
+    opts.optopt("o", "", "set output file name", "NAME");
+    opts.optopt(
+        "i",
+        "input",
+        "Specify the maximum number of commits to show (default: 10)",
+        "NUMBER",
+    );
 
-    }
+    opts.optflag("h", "help", "print this help menu");
+    opts.optflag("r", "relays", "print a json object of relays");
 
-    if args_vector.len() != 1 {
-    //catch help
-    if args_vector[1] == "-h" {
-        println!("-h HELP!");
-        process::exit(0);
-    }
-    if args_vector[1] == "--help" {
-        println!("--help HELP!");
-        process::exit(0);
-    }
-    //catch version
-    if args_vector[1] == "-v" {
-        println!("-v VERSION!");
-        process::exit(0);
-    }
-    if args_vector[1] == "--version" {
-        println!("--version VERSION!");
-        process::exit(0);
-    }
-    //catch sec
-    if args_vector[1] == "--sec" {
-        println!("--sec CALLED!");
-        process::exit(0);
-    }
-    //catch gen
-    if args_vector[1] == "--gen" {
-        //println!("--gen CALLED!");
-        gen_keys();
-        process::exit(0);
-    }
-    //catch genkey
-    if args_vector[1] == "--genkey" {
-        //println!("--genkey CALLED!");
-        gen_keys();
-        process::exit(0);
-    }
+    if args.len() >= 1 {
+        let matches = match opts.parse(&args[1..]) {
+            Ok(m) => m,
+            Err(f) => {
+                println!("Error: {}", f.to_string());
+                panic!("{}", f.to_string())
+            }
+        };
+        if matches.opt_present("h") {
+            print_usage(&program, &opts);
+            process::exit(0);
+        }
+        if matches.opt_present("r") {
+            relays(&program, &opts);
+            process::exit(0);
+        }
 
-
-    //catch genkeys
-    if args_vector[1] == "--genkeys" {
-        //println!("--genkeys CALLED!");
-        gen_keys();
-        process::exit(0);
+    let _output = matches.opt_str("o");
+		//leave input as &Option<String>
+    let _input = matches.opt_str("i");
+		//deref &str
+    let _value = _input.as_deref().unwrap_or("100");
     }
-
-    //command_example();
-
-    } else { // end if args_vector.len() == 1
-      println!("default HELP!"); }
-
-    (assert_c! {
-        #include <stdio.h>
-        int main() { printf("1:Hello, Gnostr!"); return 0; }
-    }
-    )
-    .success()
-    .stdout("1:Hello, Gnostr!");
-    //rust
-    println!("3:Hello, Gnostr!");
-
 }

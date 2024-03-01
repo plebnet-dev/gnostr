@@ -9,7 +9,6 @@ fn main() {
         .include("../include/sha256.h")
         .include("../include/random.h")
         .include("../include/proof.h")
-
         .include("../include/constants.h")
         .include("../include/struct_key.h")
         .include("../include/struct_args.h")

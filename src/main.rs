@@ -6,31 +6,31 @@ use std::process;
 
 extern crate gnostr_bins;
 
+use gnostr_bins::get_relays;
 use reqwest::Url;
 use std::io::Read;
-use gnostr_bins::{get_relays};
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
 extern crate libc;
 
-extern {
+extern "C" {
     fn double_input(input: libc::c_int) -> libc::c_int;
 }
 
-extern {
+extern "C" {
     ///static void gnostr_sha256(int argc, const char* argv[], struct args *args)
     fn gnostr_sha256(input: libc::c_int) -> libc::c_int;
 }
-extern {
+extern "C" {
     ///static int copyx(unsigned char *output, const unsigned char *x32, const unsigned char *y32, void *data)
     fn copyx(input: libc::c_int) -> libc::c_int;
 }
-extern {
+extern "C" {
     ///static void try_subcommand(int argc, const char* argv[])
     fn try_subcommand(input: libc::c_int) -> libc::c_int;
 }
-extern {
+extern "C" {
     ///static void print_hex(unsigned char* data, size_t size)
     fn print_hex(input: libc::c_int) -> libc::c_int;
 }
@@ -56,7 +56,6 @@ pub fn print_input(inp: &str, out: Option<String>) {
 }
 
 fn main() {
-
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
     //REF: https://docs.rs/getopts/latest/getopts/struct.Options.html
@@ -90,10 +89,10 @@ fn main() {
             process::exit(0);
         }
 
-    let _output = matches.opt_str("o");
-		//leave input as &Option<String>
-    let _input = matches.opt_str("i");
-		//deref &str
-    let _value = _input.as_deref().unwrap_or("100");
+        let _output = matches.opt_str("o");
+        //leave input as &Option<String>
+        let _input = matches.opt_str("i");
+        //deref &str
+        let _value = _input.as_deref().unwrap_or("100");
     }
 }

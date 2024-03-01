@@ -1,6 +1,6 @@
 extern crate libc;
 
-extern {
+extern "C" {
     pub fn gnostr_get_relays(input: libc::c_int) -> libc::c_int;
 }
 
